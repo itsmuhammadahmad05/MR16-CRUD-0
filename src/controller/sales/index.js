@@ -7,8 +7,10 @@ const SalesController = {
 getAll: async (req, res) => {
     try {
     const sales = await SalesModel.findAll({
-        order: [["createdAt", "DESC"]],
-        limit: 5,
+        include: [{
+            model : SaleProductModel,
+            include:[ProductModel]
+        }]
     });
     res.json({
         data: sales,
@@ -20,19 +22,18 @@ getAll: async (req, res) => {
 getSingle: async (req, res) => {
     try {
     const { id } = req.params;
-
     const sale = await SalesModel.findByPk(id, {
         include: [{
             model : SaleProductModel,
             include:[ProductModel]
         }]
     });
-
     if (!sale) {
         return res.status(404).json({ message: "No sale with this ID" });
     }
     res.status(200).json({ data: sale });
-    } catch (error) {
+    } 
+    catch (error) {
     console.log(error);
     res.status(500).json({ message: "Internal server error", error });
     }
@@ -40,79 +41,88 @@ getSingle: async (req, res) => {
 create: async (req, res) => {
     try {
     const payload = req.body;
-    let totalAmount = payload.totalAmount;
-
+    
+    let totalAmount = 0;
+    payload.salesProducts.forEach(ele => {
+        totalAmount = totalAmount + ele.productQuantity * ele.rate;
+    });
     const sale = new SalesModel();
     sale.totalAmount = totalAmount
     await sale.save();
 
-    const salesProducts = payload.salesProducts.map((ele) => {
-        return {
+    const salesProducts = [];
+    for (let index = 0; index < payload.salesProducts.length; index++) {
+        const ele = payload.salesProducts[index];
+        
+        const product = await ProductModel.findByPk(ele.ProductId);
+        if (ele.productQuantity > product.stock) {
+            return res.status(400).json({
+            message: "The product " + product.name + " has in-sufficient stock",
+            });
+        }
+        salesProducts.push({
         ...ele,
-        SaleId: sale.id,
-        }; 
+        SaleId: sale.id 
     });
     const saleProduct = await SaleProductModel.bulkCreate(salesProducts);
-
     res.status(200).json({ message: "sale created", saleProduct });
     } 
+}
     catch (error) {
     console.log("Error",error);
     res.status(500).json({ message: "Internal server error" });
     }
 },
 
-update:async (req , res)=>{
-    try {
-        const {id} = req.params;
-        const payload= req.body;
+// update: async(req , res)=>{
+//     try {
+//         const {id} = req.params;
+//         const payload= req.body;
 
-        const sale = await SalesModel.findByPk(id, {
-            include:[SaleProductModel]
-        });
-        if(!sale){
-            console.log("Record not found")
-            return res.status(404).json({ error: "Record not found" });
-        }
+//         const sale = await SalesModel.findByPk(id, {
+//             include:[SaleProductModel]
+//         });
+//         if(!sale){
+//             console.log("Record not found")
+//             return res.status(404).json({ error: "Record not found" });
+//         }
 
-        // await SalesModel.update(
-        //     { lastName: 'xyz' },
-        //     {
-        //       where: {
-        //         lastName: null,
-        //       },
-        //     },
-        //   );
+//         // await SalesModel.update(
+//         //     { lastName: 'xyz' },
+//         //     {
+//         //       where: {
+//         //         lastName: null,
+//         //       },
+//         //     },
+//         //   );
 
-        const saleUpdate = await sale.update(payload);
-        await saleUpdate.save();
+//         const saleUpdate = await sale.update(payload);
+//         await saleUpdate.save();
 
-        console.log({message:"Record Updated", saleUpdate})
-        res.status(200).json({message:"Record Updated", saleUpdate})
-    } 
-    catch (error) {
-        console.error("Error:", error);
-        return res.status(404).json({error:"Internal Server Error"}); 
-    }
-},
+//         console.log({message:"Record Updated", saleUpdate})
+//         res.status(200).json({message:"Record Updated", saleUpdate})
+//     } 
+//     catch (error) {
+//         console.error("Error:", error);
+//         return res.status(404).json({error:"Internal Server Error"}); 
+//     }
+// },
 
-delete:async (req , res)=>{
+delete: async(req , res)=>{
     try {
         const saleID = req.params.id;
 
-        const sale = await SalesModel.findByPk(saleID, {
-            include:[SaleProductModel]
-        });
+        const sale = await SalesModel.findByPk(saleID);
         if(!sale){
             console.log("Record not found")
             return res.status(404).json({ error: "Record not found" });
         }
 
-        // // //await SalesModel.destroy({
-        //         where:{
-        //             productName:'xyz',
-        //         }
-        // // });
+        await SaleProductModel.destroy({
+                where:{
+                    SaleId: saleID
+                }
+        });
         await sale.destroy();
         console.log({message:"Record Deleted", sale})
         res.status(200).json({message:"Record Deleted", sale})
@@ -123,5 +133,4 @@ delete:async (req , res)=>{
     }
 },
 };
-
 export default SalesController;

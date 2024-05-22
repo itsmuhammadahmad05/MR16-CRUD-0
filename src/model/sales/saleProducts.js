@@ -6,16 +6,10 @@
     const SaleProductModel = sequelize.define(
     "SaleProduct",
     {
-        ProductName: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        },
-
         productQuantity: {
         type: DataTypes.INTEGER,
         allowNull: false,
         },
-
         rate: {
         type: DataTypes.DOUBLE,
         allowNull: false,

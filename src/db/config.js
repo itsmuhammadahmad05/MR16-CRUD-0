@@ -22,5 +22,5 @@ catch (error) {
     }
 }
 
-export {connectDB};
+export {connectDB}; //when we have to export multiple functions then we write like this.
 export default sequelize;

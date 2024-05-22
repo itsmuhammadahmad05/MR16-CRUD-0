@@ -9,8 +9,8 @@ salesRouter.post("/sales", SalesController.create);
 
 salesRouter.get("/sales/:id", SalesController.getSingle);
 
-salesRouter.put("/sales/:id", SalesController.update);
+// salesRouter.put("/sales/:id", SalesController.update);
 
-salesRouter.delete("/sales/:id", SalesController.delete);
+// salesRouter.delete("/sales/:id", SalesController.delete);
 
 export default salesRouter;
